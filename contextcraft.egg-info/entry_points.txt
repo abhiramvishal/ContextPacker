@@ -1,0 +1,2 @@
+[console_scripts]
+contextcraft = contextcraft.cli:app

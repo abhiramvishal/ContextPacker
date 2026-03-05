@@ -1,0 +1,548 @@
+{
+  "file_tree": {
+    "root": "C:\\Abhiram Set\\Projects\\ContextPacker",
+    "primary_languages": [
+      [
+        "python",
+        11
+      ]
+    ],
+    "file_count": 18
+  },
+  "file_analyses": [
+    {
+      "path": "contextcraft/cli.py",
+      "language": "python",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_main",
+          "signature": "_main() -> None",
+          "docstring": "ContextCraft CLI."
+        },
+        {
+          "name": "_get_api_key",
+          "signature": "_get_api_key() -> str | None",
+          "docstring": "Load ANTHROPIC_API_KEY from .env (repo and cwd) and environment."
+        },
+        {
+          "name": "init",
+          "signature": "init(repo_path: Path, no_ai: bool, format: str) -> None",
+          "docstring": "Analyze the repository and generate context.pack.md (or JSON).\nRequires ANTHROPIC_API_KEY for AI synthesis unless --no-ai is used."
+        },
+        {
+          "name": "main",
+          "signature": "main() -> None",
+          "docstring": "Entry point for the CLI."
+        }
+      ],
+      "constants": [
+        "app",
+        "console"
+      ]
+    },
+    {
+      "path": "contextcraft/formatter.py",
+      "language": "python",
+      "classes": [],
+      "functions": [
+        {
+          "name": "extract_ai_briefing_footer",
+          "signature": "extract_ai_briefing_footer(markdown: str) -> str | None",
+          "docstring": "Extract the AI Briefing Footer section from Claude's markdown for Quick Copy."
+        },
+        {
+          "name": "format_context_pack",
+          "signature": "format_context_pack(claude_output: str, repo_name: str, output_path: Path) -> str",
+          "docstring": "Wrap Claude's output in context.pack.md with YAML header and Quick Copy section.\nReturns the full document string; also writes to output_path."
+        }
+      ],
+      "constants": []
+    },
+    {
+      "path": "contextcraft/scanner.py",
+      "language": "python",
+      "classes": [
+        {
+          "name": "FileInfo",
+          "methods": [
+            "language"
+          ],
+          "docstring": "Metadata for a single file in the tree."
+        },
+        {
+          "name": "FileTree",
+          "methods": [
+            "files_by_language",
+            "get_extension_counts"
+          ],
+          "docstring": "Result of scanning a repository: files and language stats."
+        }
+      ],
+      "functions": [
+        {
+          "name": "_load_gitignore_spec",
+          "signature": "_load_gitignore_spec(root: Path) -> pathspec.PathSpec",
+          "docstring": "Load .gitignore rules from repo root into a PathSpec."
+        },
+        {
+          "name": "_should_skip",
+          "signature": "_should_skip(path: Path, relative: str, spec: pathspec.PathSpec) -> bool",
+          "docstring": "Return True if path should be skipped (gitignore or binary/skip rules)."
+        },
+        {
+          "name": "_is_likely_binary",
+          "signature": "_is_likely_binary(path: Path) -> bool",
+          "docstring": "Heuristic: read first 8k and check for null bytes."
+        },
+        {
+          "name": "scan_repo",
+          "signature": "scan_repo(repo_path: Path) -> FileTree",
+          "docstring": "Walk the repository recursively, respecting .gitignore and skip rules.\nCollect file paths, extensions, sizes, last modified; detect primary languages."
+        },
+        {
+          "name": "read_file_safe",
+          "signature": "read_file_safe(path: Path, encoding: str, max_size: int) -> str | None",
+          "docstring": "Read file contents safely. Returns None on encoding error or if binary/large."
+        }
+      ],
+      "constants": [
+        "DEFAULT_SKIP_PATTERNS",
+        "BINARY_OR_SKIP_EXTENSIONS"
+      ]
+    },
+    {
+      "path": "contextcraft/synthesizer.py",
+      "language": "python",
+      "classes": [],
+      "functions": [
+        {
+          "name": "build_analysis_payload",
+          "signature": "build_analysis_payload(file_tree: dict[str, Any], file_analyses: list[dict[str, Any]], patterns: dict[str, Any], dependency_graph: dict[str, Any], git_context: dict[str, Any] | None) -> str",
+          "docstring": "Build a single JSON payload for the user prompt."
+        },
+        {
+          "name": "synthesize",
+          "signature": "synthesize(analysis_payload: str, api_key: str, model: str, max_tokens: int) -> str",
+          "docstring": "Call Claude API to generate the Context Pack text.\nRaises on API or key errors; caller should handle and e.g. save raw JSON."
+        }
+      ],
+      "constants": [
+        "ANTHROPIC_MODEL",
+        "MAX_OUTPUT_TOKENS",
+        "SYSTEM_PROMPT",
+        "USER_PROMPT_TEMPLATE",
+        "USER_PROMPT_END"
+      ]
+    },
+    {
+      "path": "contextcraft/__init__.py",
+      "language": "python",
+      "classes": [],
+      "functions": [],
+      "constants": [
+        "__version__"
+      ]
+    },
+    {
+      "path": "tests/test_scanner.py",
+      "language": "python",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_scan_repo_not_a_directory",
+          "signature": "test_scan_repo_not_a_directory(tmp_path: Path) -> None",
+          "docstring": "Scanning a file raises NotADirectoryError."
+        },
+        {
+          "name": "test_scan_repo_empty_dir",
+          "signature": "test_scan_repo_empty_dir(tmp_path: Path) -> None",
+          "docstring": "Scanning an empty directory returns empty file list."
+        },
+        {
+          "name": "test_scan_repo_respects_gitignore",
+          "signature": "test_scan_repo_respects_gitignore(tmp_path: Path) -> None",
+          "docstring": "Files and dirs in .gitignore are skipped."
+        },
+        {
+          "name": "test_scan_repo_primary_languages",
+          "signature": "test_scan_repo_primary_languages(tmp_path: Path) -> None",
+          "docstring": "Primary languages are detected by file count."
+        },
+        {
+          "name": "test_file_info_language",
+          "signature": "test_file_info_language() -> None",
+          "docstring": "FileInfo.language returns correct language for extension."
+        },
+        {
+          "name": "test_read_file_safe_success",
+          "signature": "test_read_file_safe_success(tmp_path: Path) -> None",
+          "docstring": "read_file_safe returns content for valid UTF-8 file."
+        },
+        {
+          "name": "test_read_file_safe_invalid_encoding",
+          "signature": "test_read_file_safe_invalid_encoding(tmp_path: Path) -> None",
+          "docstring": "read_file_safe returns None for invalid UTF-8."
+        },
+        {
+          "name": "test_read_file_safe_missing",
+          "signature": "test_read_file_safe_missing() -> None",
+          "docstring": "read_file_safe returns None for missing file."
+        }
+      ],
+      "constants": []
+    },
+    {
+      "path": "contextcraft/analyzer/ast_parser.py",
+      "language": "python",
+      "classes": [
+        {
+          "name": "ClassInfo",
+          "methods": [],
+          "docstring": "Extracted class with methods and docstring."
+        },
+        {
+          "name": "FunctionInfo",
+          "methods": [],
+          "docstring": "Extracted function with signature and docstring."
+        },
+        {
+          "name": "FileAnalysis",
+          "methods": [],
+          "docstring": "Structured analysis for one file: path, language, classes, functions, constants."
+        }
+      ],
+      "functions": [
+        {
+          "name": "_get_docstring",
+          "signature": "_get_docstring(node: ast.AST) -> str | None",
+          "docstring": "Extract docstring from ast node."
+        },
+        {
+          "name": "_format_arg",
+          "signature": "_format_arg(arg: ast.arg) -> str",
+          "docstring": null
+        },
+        {
+          "name": "_format_signature",
+          "signature": "_format_signature(f: ast.FunctionDef) -> str",
+          "docstring": null
+        },
+        {
+          "name": "_analyze_python",
+          "signature": "_analyze_python(source: str, path: str) -> FileAnalysis",
+          "docstring": "Use stdlib ast to extract classes, functions, constants from Python."
+        },
+        {
+          "name": "_js_ts_analyze_tree_sitter",
+          "signature": "_js_ts_analyze_tree_sitter(source: bytes, path: str, language: str) -> FileAnalysis",
+          "docstring": "Use tree-sitter for JavaScript/TypeScript."
+        },
+        {
+          "name": "_java_analyze_tree_sitter",
+          "signature": "_java_analyze_tree_sitter(source: bytes, path: str) -> FileAnalysis",
+          "docstring": "Use tree-sitter for Java (optional; fallback to empty analysis if not installed)."
+        },
+        {
+          "name": "parse_file",
+          "signature": "parse_file(file_info: FileInfo, source: str | None) -> FileAnalysis | None",
+          "docstring": "Parse a single file and return structured analysis (classes, functions, constants).\nReturns None if file could not be read or parsed; caller may skip or warn."
+        },
+        {
+          "name": "analysis_to_dict",
+          "signature": "analysis_to_dict(analysis: FileAnalysis) -> dict[str, Any]",
+          "docstring": "Convert FileAnalysis to a JSON-serializable dict."
+        }
+      ],
+      "constants": []
+    },
+    {
+      "path": "contextcraft/analyzer/dependency_graph.py",
+      "language": "python",
+      "classes": [
+        {
+          "name": "DependencyGraph",
+          "methods": [],
+          "docstring": "Import graph: who imports whom; top internal modules by import count."
+        }
+      ],
+      "functions": [
+        {
+          "name": "_normalize_module_path",
+          "signature": "_normalize_module_path(relative_path: str, language: str) -> str",
+          "docstring": "Normalize file path to module name (e.g. for Python: path/to/module.py -> path.to.module)."
+        },
+        {
+          "name": "_python_imports",
+          "signature": "_python_imports(source: str, file_path: str) -> list[str]",
+          "docstring": "Extract import targets from Python source."
+        },
+        {
+          "name": "_js_ts_imports",
+          "signature": "_js_ts_imports(source: str) -> list[str]",
+          "docstring": "Extract import targets from JS/TS source (first segment of path or package name)."
+        },
+        {
+          "name": "_java_imports",
+          "signature": "_java_imports(source: str) -> list[str]",
+          "docstring": "Extract import targets from Java source (package or top-level type)."
+        },
+        {
+          "name": "build_dependency_graph",
+          "signature": "build_dependency_graph(file_tree: FileTree, max_files: int) -> DependencyGraph",
+          "docstring": "Parse imports across the repo; build graph; return top 10 most-imported internal modules."
+        },
+        {
+          "name": "dependency_graph_to_dict",
+          "signature": "dependency_graph_to_dict(graph: DependencyGraph) -> dict[str, Any]",
+          "docstring": "Convert DependencyGraph to JSON-serializable dict."
+        }
+      ],
+      "constants": []
+    },
+    {
+      "path": "contextcraft/analyzer/git_analyzer.py",
+      "language": "python",
+      "classes": [
+        {
+          "name": "GitContext",
+          "methods": [],
+          "docstring": "Git-derived context: recent commits, hotspot files, main branch."
+        }
+      ],
+      "functions": [
+        {
+          "name": "analyze_git",
+          "signature": "analyze_git(repo_path: Path, file_tree: FileTree | None) -> GitContext | None",
+          "docstring": "Use gitpython to get last 30 commits, hotspot files, last 5 messages, main branch.\nReturns None if not a git repo; returns GitContext with is_repo=False on error."
+        },
+        {
+          "name": "git_context_to_dict",
+          "signature": "git_context_to_dict(ctx: GitContext | None) -> dict[str, Any] | None",
+          "docstring": "Convert GitContext to JSON-serializable dict; return None if ctx is None."
+        }
+      ],
+      "constants": []
+    },
+    {
+      "path": "contextcraft/analyzer/pattern_detector.py",
+      "language": "python",
+      "classes": [
+        {
+          "name": "Patterns",
+          "methods": [],
+          "docstring": "Detected conventions: naming, testing, error handling, API, config."
+        }
+      ],
+      "functions": [
+        {
+          "name": "_detect_naming",
+          "signature": "_detect_naming(sources: list[str]) -> str",
+          "docstring": "Determine primary naming convention from source samples."
+        },
+        {
+          "name": "_detect_test_framework",
+          "signature": "_detect_test_framework(file_tree: FileTree, sources: list[tuple[str, str]]) -> str | None",
+          "docstring": "Detect test framework from file names and imports."
+        },
+        {
+          "name": "_detect_error_handling",
+          "signature": "_detect_error_handling(sources: list[str]) -> list[str]",
+          "docstring": "Detect error handling style: try/except, custom exceptions."
+        },
+        {
+          "name": "_detect_custom_exceptions",
+          "signature": "_detect_custom_exceptions(sources: list[str]) -> list[str]",
+          "docstring": "Find custom exception class names."
+        },
+        {
+          "name": "_detect_api_style",
+          "signature": "_detect_api_style(sources: list[str]) -> str",
+          "docstring": "Detect API style: REST, GraphQL, or internal."
+        },
+        {
+          "name": "_detect_config_style",
+          "signature": "_detect_config_style(sources: list[str]) -> list[str]",
+          "docstring": "Detect how config is loaded: env vars, config files, hardcoded."
+        },
+        {
+          "name": "detect_patterns",
+          "signature": "detect_patterns(file_tree: FileTree, max_files: int) -> Patterns",
+          "docstring": "Analyze naming conventions, test framework, error handling, API style, config.\nSamples up to max_files of readable source files."
+        },
+        {
+          "name": "patterns_to_dict",
+          "signature": "patterns_to_dict(patterns: Patterns) -> dict[str, Any]",
+          "docstring": "Convert Patterns to JSON-serializable dict."
+        }
+      ],
+      "constants": [
+        "SNAKE_RE",
+        "CAMEL_RE",
+        "PASCAL_RE",
+        "PYTEST_IMPORTS",
+        "UNITTEST_IMPORTS",
+        "JEST_PATTERNS",
+        "MOCHA_PATTERNS",
+        "REST_PATTERNS",
+        "GRAPHQL_PATTERNS",
+        "ENV_PATTERNS",
+        "CONFIG_FILE_PATTERNS"
+      ]
+    },
+    {
+      "path": "contextcraft/analyzer/__init__.py",
+      "language": "python",
+      "classes": [],
+      "functions": [],
+      "constants": [
+        "__all__"
+      ]
+    }
+  ],
+  "patterns": {
+    "naming": "snake_case",
+    "test_framework": "pytest",
+    "error_handling": [
+      "try/except or try/catch",
+      "raise/throw exceptions",
+      "custom exception classes"
+    ],
+    "api_style": "REST",
+    "config_style": [
+      "env vars (.env, os.environ, BaseSettings)",
+      "config files (yaml/json/ini)"
+    ],
+    "custom_exceptions": []
+  },
+  "dependency_graph": {
+    "imports": {
+      "contextcraft/cli.py": [
+        "__future__",
+        "json",
+        "sys",
+        "pathlib",
+        "typer",
+        "dotenv",
+        "rich",
+        "rich",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "os"
+      ],
+      "contextcraft/formatter.py": [
+        "__future__",
+        "re",
+        "datetime",
+        "pathlib",
+        "contextcraft"
+      ],
+      "contextcraft/scanner.py": [
+        "__future__",
+        "re",
+        "dataclasses",
+        "pathlib",
+        "pathspec"
+      ],
+      "contextcraft/synthesizer.py": [
+        "__future__",
+        "json",
+        "typing",
+        "anthropic"
+      ],
+      "contextcraft/__init__.py": [],
+      "tests/test_scanner.py": [
+        "pathlib",
+        "pytest",
+        "contextcraft"
+      ],
+      "contextcraft/analyzer/ast_parser.py": [
+        "__future__",
+        "ast",
+        "dataclasses",
+        "typing",
+        "contextcraft",
+        "tree_sitter",
+        "tree_sitter_javascript",
+        "tree_sitter",
+        "tree_sitter",
+        "tree_sitter_java",
+        "tree_sitter"
+      ],
+      "contextcraft/analyzer/dependency_graph.py": [
+        "__future__",
+        "ast",
+        "re",
+        "collections",
+        "dataclasses",
+        "typing",
+        "contextcraft"
+      ],
+      "contextcraft/analyzer/git_analyzer.py": [
+        "__future__",
+        "dataclasses",
+        "pathlib",
+        "typing",
+        "contextcraft",
+        "git"
+      ],
+      "contextcraft/analyzer/pattern_detector.py": [
+        "__future__",
+        "re",
+        "dataclasses",
+        "typing",
+        "contextcraft"
+      ],
+      "contextcraft/analyzer/__init__.py": [
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft"
+      ]
+    },
+    "imported_by": {
+      "contextcraft": [
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/cli.py",
+        "contextcraft/formatter.py",
+        "tests/test_scanner.py",
+        "contextcraft/analyzer/ast_parser.py",
+        "contextcraft/analyzer/dependency_graph.py",
+        "contextcraft/analyzer/git_analyzer.py",
+        "contextcraft/analyzer/pattern_detector.py",
+        "contextcraft/analyzer/__init__.py",
+        "contextcraft/analyzer/__init__.py",
+        "contextcraft/analyzer/__init__.py",
+        "contextcraft/analyzer/__init__.py"
+      ]
+    },
+    "top_internal_modules": [
+      [
+        "contextcraft",
+        18
+      ],
+      [
+        "ast",
+        2
+      ],
+      [
+        "git",
+        1
+      ]
+    ]
+  },
+  "git_context": null,
+  "warnings": []
+}
