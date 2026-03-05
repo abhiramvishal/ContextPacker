@@ -42,9 +42,22 @@ console = Console()
 _verbose = False
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"ContextCraft {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def _main(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Print detailed progress and token counts."),
+    version: bool = typer.Option(
+        None,
+        "--version",
+        is_eager=True,
+        callback=_version_callback,
+        help="Show version and exit.",
+    ),
 ) -> None:
     """ContextCraft CLI."""
     global _verbose

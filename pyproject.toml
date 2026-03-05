@@ -1,23 +1,27 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "contextcraft"
 version = "0.1.0"
-description = "Analyzes a code repository and generates a structured Context Pack for AI coding tools"
+description = "Generate structured Context Packs for AI coding tools by analyzing your codebase."
 readme = "README.md"
-requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "ContextCraft" }]
-keywords = ["cli", "code-analysis", "ai", "context-pack"]
+requires-python = ">=3.11"
+keywords = ["ai", "context", "llm", "developer-tools", "cli"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
 ]
+authors = [{ name = "ContextCraft" }]
 dependencies = [
     "typer>=0.9.0",
     "rich>=13.0.0",
@@ -31,6 +35,11 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://abhiramvishal.github.io/ContextPacker"
+Repository = "https://github.com/abhiramvishal/ContextPacker"
+"Bug Tracker" = "https://github.com/abhiramvishal/ContextPacker/issues"
 
 [project.optional-dependencies]
 dev = [

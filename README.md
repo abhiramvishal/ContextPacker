@@ -1,26 +1,26 @@
 # ContextCraft
 
+[![PyPI version](https://badge.fury.io/py/contextcraft.svg)](https://pypi.org/project/contextcraft/)
+
 A Python CLI tool that analyzes a code repository and generates a structured **Context Pack** document optimized for injecting into AI coding tools (Claude, GPT, Cursor, Copilot) so they understand the codebase before writing code.
 
 ## Installation
 
+### CLI
+
 ```bash
-pip install -e .
+pip install contextcraft
 ```
 
-This registers the `contextcraft` command.
+### VS Code Extension
+
+Coming soon on the VS Code Marketplace.
 
 ## Usage
 
 ```bash
-# Generate context.pack.md (requires ANTHROPIC_API_KEY for AI synthesis)
-contextcraft init <path_to_repo>
-
-# Offline mode: extraction only, no Claude API call
-contextcraft init <path_to_repo> --no-ai
-
-# Output as JSON instead of markdown
-contextcraft init <path_to_repo> --format json
+export ANTHROPIC_API_KEY=your_key_here
+contextcraft init /path/to/your/repo
 ```
 
 ## Environment
