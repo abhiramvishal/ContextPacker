@@ -60,8 +60,10 @@ OTHER_CONST = 42
     assert "metrics" in analysis_to_dict(analysis)
     metrics = analysis.metrics
     assert "lines" in metrics
+    assert "blank_lines" in metrics
     assert "function_count" in metrics
     assert "class_count" in metrics
+    assert "avg_function_length" in metrics
 
 
 def test_analysis_to_dict_includes_warnings() -> None:
