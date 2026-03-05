@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 contextcraft/__init__.py
 contextcraft/cli.py
+contextcraft/constants.py
 contextcraft/formatter.py
 contextcraft/scanner.py
 contextcraft/synthesizer.py
@@ -16,4 +17,6 @@ contextcraft/analyzer/ast_parser.py
 contextcraft/analyzer/dependency_graph.py
 contextcraft/analyzer/git_analyzer.py
 contextcraft/analyzer/pattern_detector.py
+tests/test_analyzers.py
+tests/test_formatter.py
 tests/test_scanner.py
