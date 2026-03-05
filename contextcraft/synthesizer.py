@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
-ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+from contextcraft.constants import MAX_FILES_FOR_SYNTHESIS
+
+ANTHROPIC_MODEL = "claude-sonnet-4-5"
 MAX_OUTPUT_TOKENS = 2000
 
 SYSTEM_PROMPT = """You are a senior software architect. Your job is to write a concise, structured Context Pack for an AI coding assistant. The pack should tell the AI everything it needs to know to write idiomatic code for this codebase. Be precise and dense — every word should add information."""
@@ -41,7 +44,7 @@ def build_analysis_payload(
             "primary_languages": file_tree.get("primary_languages", []),
             "file_count": file_tree.get("file_count", 0),
         },
-        "file_analyses": file_analyses[:150],
+        "file_analyses": file_analyses[:MAX_FILES_FOR_SYNTHESIS],
         "patterns": patterns,
         "dependency_graph": dependency_graph,
         "git_context": git_context,
@@ -57,22 +60,39 @@ def synthesize(
 ) -> str:
     """
     Call Claude API to generate the Context Pack text.
-    Raises on API or key errors; caller should handle and e.g. save raw JSON.
+    Retries up to 3 times on 429 or 529 with exponential backoff (2s, 4s, 8s).
+    Raises on other API or key errors; caller should handle and e.g. save raw JSON.
     """
     from anthropic import Anthropic
+    from anthropic import APIStatusError
 
     client = Anthropic(api_key=api_key)
     user_content = USER_PROMPT_TEMPLATE + analysis_payload + USER_PROMPT_END
+    delays = [2, 4, 8]
+    last_error: Exception | None = None
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
-    )
+    for attempt in range(1 + len(delays)):
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_content}],
+            )
+            text = ""
+            for block in response.content:
+                if hasattr(block, "text"):
+                    text += block.text
+            return text.strip()
+        except APIStatusError as e:
+            last_error = e
+            if e.status_code in (429, 529) and attempt < len(delays):
+                time.sleep(delays[attempt])
+                continue
+            raise
+        except Exception:
+            raise
 
-    text = ""
-    for block in response.content:
-        if hasattr(block, "text"):
-            text += block.text
-    return text.strip()
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("synthesize failed after retries")

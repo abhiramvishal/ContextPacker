@@ -8,6 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
+from contextcraft.constants import MAX_FILES_FOR_DEP_GRAPH
 from contextcraft.scanner import FileInfo, FileTree, read_file_safe
 
 
@@ -51,22 +52,55 @@ def _python_imports(source: str, file_path: str) -> list[str]:
     return imports
 
 
-def _js_ts_imports(source: str) -> list[str]:
-    """Extract import targets from JS/TS source (first segment of path or package name)."""
+def _normalize_relative_import(imp: str, current_file_path: str) -> str:
+    """Resolve relative import to a clean module path (no leading ./, ../)."""
+    imp = imp.replace("\\", "/").strip()
+    while imp.startswith("./"):
+        imp = imp[2:]
+    if not imp:
+        return ""
+    # Resolve ../ and current dir from current_file_path's directory
+    current_dir = current_file_path.replace("\\", "/").rsplit("/", 1)[0]
+    if not current_dir:
+        current_dir = "."
+    parts = current_dir.split("/") if current_dir != "." else []
+    for seg in imp.split("/"):
+        if seg == "..":
+            if parts:
+                parts.pop()
+        elif seg != ".":
+            parts.append(seg)
+    path = "/".join(parts).strip("/")
+    # Drop extension for consistency
+    for ext in (".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"):
+        if path.endswith(ext):
+            path = path[: -len(ext)]
+            break
+    return path
+
+
+def _js_ts_imports(source: str, current_file_path: str) -> list[str]:
+    """Extract import targets from JS/TS source. Includes relative imports (internal); excludes bare package names (node_modules)."""
     imports: list[str] = []
-    # require('x'), require("x"), import x from 'y', import { z } from 'y'
+    # require('x'), require("x")
     for m in re.finditer(r"(?:require\s*\(\s*['\"])([^'\"]+)(?:['\"])", source):
-        imp = m.group(1).split("/")[0]
-        if not imp.startswith("."):
-            imports.append(imp)
+        imp = m.group(1).strip()
+        if imp.startswith("."):
+            norm = _normalize_relative_import(imp, current_file_path)
+            if norm:
+                imports.append(norm)
     for m in re.finditer(r"import\s+.*?\s+from\s+['\"]([^'\"]+)['\"]", source):
-        imp = m.group(1).split("/")[0]
-        if not imp.startswith("."):
-            imports.append(imp)
+        imp = m.group(1).strip()
+        if imp.startswith("."):
+            norm = _normalize_relative_import(imp, current_file_path)
+            if norm:
+                imports.append(norm)
     for m in re.finditer(r"import\s+['\"]([^'\"]+)['\"]", source):
-        imp = m.group(1).split("/")[0]
-        if not imp.startswith("."):
-            imports.append(imp)
+        imp = m.group(1).strip()
+        if imp.startswith("."):
+            norm = _normalize_relative_import(imp, current_file_path)
+            if norm:
+                imports.append(norm)
     return imports
 
 
@@ -79,7 +113,7 @@ def _java_imports(source: str) -> list[str]:
     return imports
 
 
-def build_dependency_graph(file_tree: FileTree, max_files: int = 2000) -> DependencyGraph:
+def build_dependency_graph(file_tree: FileTree, max_files: int = MAX_FILES_FOR_DEP_GRAPH) -> DependencyGraph:
     """
     Parse imports across the repo; build graph; return top 10 most-imported internal modules.
     """
@@ -128,13 +162,10 @@ def build_dependency_graph(file_tree: FileTree, max_files: int = 2000) -> Depend
                 if imp in internal_prefixes or any(mod.startswith(imp + ".") for mod in path_to_module.values()):
                     graph.imported_by.setdefault(imp, []).append(path)
         elif f.language in ("javascript", "typescript"):
-            raw = _js_ts_imports(src)
+            raw = _js_ts_imports(src, path)
             for imp in raw:
-                if imp.startswith("."):
-                    continue
                 graph.imports[path].append(imp)
-                if imp in internal_prefixes:
-                    graph.imported_by.setdefault(imp, []).append(path)
+                graph.imported_by.setdefault(imp, []).append(path)
         elif f.language == "java":
             raw = _java_imports(src)
             for imp in raw:

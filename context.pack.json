@@ -4,10 +4,10 @@
     "primary_languages": [
       [
         "python",
-        11
+        14
       ]
     ],
-    "file_count": 18
+    "file_count": 21
   },
   "file_analyses": [
     {
@@ -26,6 +26,16 @@
           "docstring": "Load ANTHROPIC_API_KEY from .env (repo and cwd) and environment."
         },
         {
+          "name": "_run_analysis",
+          "signature": "_run_analysis(file_tree: FileTree) -> tuple[list[dict], list[str]]",
+          "docstring": "Run AST parsing on all language files; return (file_analyses, warnings)."
+        },
+        {
+          "name": "_run_git_and_patterns",
+          "signature": "_run_git_and_patterns(file_tree: FileTree, repo_path: Path) -> tuple",
+          "docstring": "Run pattern detection, dependency graph, and git analysis; return (patterns, dependency_graph, git_context)."
+        },
+        {
           "name": "init",
           "signature": "init(repo_path: Path, no_ai: bool, format: str) -> None",
           "docstring": "Analyze the repository and generate context.pack.md (or JSON).\nRequires ANTHROPIC_API_KEY for AI synthesis unless --no-ai is used."
@@ -39,7 +49,21 @@
       "constants": [
         "app",
         "console"
-      ]
+      ],
+      "warnings": []
+    },
+    {
+      "path": "contextcraft/constants.py",
+      "language": "python",
+      "classes": [],
+      "functions": [],
+      "constants": [
+        "MAX_FILES_FOR_SYNTHESIS",
+        "MAX_FILES_FOR_PATTERNS",
+        "MAX_FILES_FOR_DEP_GRAPH",
+        "MAX_FILE_READ_BYTES"
+      ],
+      "warnings": []
     },
     {
       "path": "contextcraft/formatter.py",
@@ -57,7 +81,8 @@
           "docstring": "Wrap Claude's output in context.pack.md with YAML header and Quick Copy section.\nReturns the full document string; also writes to output_path."
         }
       ],
-      "constants": []
+      "constants": [],
+      "warnings": []
     },
     {
       "path": "contextcraft/scanner.py",
@@ -109,7 +134,8 @@
       "constants": [
         "DEFAULT_SKIP_PATTERNS",
         "BINARY_OR_SKIP_EXTENSIONS"
-      ]
+      ],
+      "warnings": []
     },
     {
       "path": "contextcraft/synthesizer.py",
@@ -124,7 +150,7 @@
         {
           "name": "synthesize",
           "signature": "synthesize(analysis_payload: str, api_key: str, model: str, max_tokens: int) -> str",
-          "docstring": "Call Claude API to generate the Context Pack text.\nRaises on API or key errors; caller should handle and e.g. save raw JSON."
+          "docstring": "Call Claude API to generate the Context Pack text.\nRetries up to 3 times on 429 or 529 with exponential backoff (2s, 4s, 8s).\nRaises on other API or key errors; caller should handle and e.g. save raw JSON."
         }
       ],
       "constants": [
@@ -133,7 +159,8 @@
         "SYSTEM_PROMPT",
         "USER_PROMPT_TEMPLATE",
         "USER_PROMPT_END"
-      ]
+      ],
+      "warnings": []
     },
     {
       "path": "contextcraft/__init__.py",
@@ -142,7 +169,71 @@
       "functions": [],
       "constants": [
         "__version__"
-      ]
+      ],
+      "warnings": []
+    },
+    {
+      "path": "tests/test_analyzers.py",
+      "language": "python",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_parse_file_python_extracts_class_and_functions",
+          "signature": "test_parse_file_python_extracts_class_and_functions(tmp_path: Path) -> None",
+          "docstring": "Parse a small Python snippet; assert class and function names are extracted."
+        },
+        {
+          "name": "test_analysis_to_dict_includes_warnings",
+          "signature": "test_analysis_to_dict_includes_warnings() -> None",
+          "docstring": "analysis_to_dict includes warnings field."
+        },
+        {
+          "name": "test_build_dependency_graph_internal_modules",
+          "signature": "test_build_dependency_graph_internal_modules(tmp_path: Path) -> None",
+          "docstring": "Build graph from mock FileTree with 2\u20133 Python files; assert top internal modules."
+        },
+        {
+          "name": "test_js_ts_imports_relative_included",
+          "signature": "test_js_ts_imports_relative_included() -> None",
+          "docstring": "Relative imports are included and normalized."
+        },
+        {
+          "name": "test_normalize_relative_import",
+          "signature": "test_normalize_relative_import() -> None",
+          "docstring": "_normalize_relative_import strips ./ and ../ and normalizes."
+        },
+        {
+          "name": "test_detect_patterns_naming_snake_case",
+          "signature": "test_detect_patterns_naming_snake_case(tmp_path: Path) -> None",
+          "docstring": "Run detect_patterns on minimal FileTree with snake_case source; assert naming detected."
+        }
+      ],
+      "constants": [],
+      "warnings": []
+    },
+    {
+      "path": "tests/test_formatter.py",
+      "language": "python",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_format_context_pack_produces_yaml_header",
+          "signature": "test_format_context_pack_produces_yaml_header(tmp_path: Path) -> None",
+          "docstring": "format_context_pack() produces output with the YAML header."
+        },
+        {
+          "name": "test_extract_ai_briefing_footer_when_present",
+          "signature": "test_extract_ai_briefing_footer_when_present() -> None",
+          "docstring": "extract_ai_briefing_footer() correctly extracts the footer section when present."
+        },
+        {
+          "name": "test_extract_ai_briefing_footer_when_absent",
+          "signature": "test_extract_ai_briefing_footer_when_absent() -> None",
+          "docstring": "extract_ai_briefing_footer() returns None (falsy) when section absent."
+        }
+      ],
+      "constants": [],
+      "warnings": []
     },
     {
       "path": "tests/test_scanner.py",
@@ -190,7 +281,8 @@
           "docstring": "read_file_safe returns None for missing file."
         }
       ],
-      "constants": []
+      "constants": [],
+      "warnings": []
     },
     {
       "path": "contextcraft/analyzer/ast_parser.py",
@@ -254,7 +346,8 @@
           "docstring": "Convert FileAnalysis to a JSON-serializable dict."
         }
       ],
-      "constants": []
+      "constants": [],
+      "warnings": []
     },
     {
       "path": "contextcraft/analyzer/dependency_graph.py",
@@ -278,9 +371,14 @@
           "docstring": "Extract import targets from Python source."
         },
         {
+          "name": "_normalize_relative_import",
+          "signature": "_normalize_relative_import(imp: str, current_file_path: str) -> str",
+          "docstring": "Resolve relative import to a clean module path (no leading ./, ../)."
+        },
+        {
           "name": "_js_ts_imports",
-          "signature": "_js_ts_imports(source: str) -> list[str]",
-          "docstring": "Extract import targets from JS/TS source (first segment of path or package name)."
+          "signature": "_js_ts_imports(source: str, current_file_path: str) -> list[str]",
+          "docstring": "Extract import targets from JS/TS source. Includes relative imports (internal); excludes bare package names (node_modules)."
         },
         {
           "name": "_java_imports",
@@ -298,7 +396,8 @@
           "docstring": "Convert DependencyGraph to JSON-serializable dict."
         }
       ],
-      "constants": []
+      "constants": [],
+      "warnings": []
     },
     {
       "path": "contextcraft/analyzer/git_analyzer.py",
@@ -322,7 +421,8 @@
           "docstring": "Convert GitContext to JSON-serializable dict; return None if ctx is None."
         }
       ],
-      "constants": []
+      "constants": [],
+      "warnings": []
     },
     {
       "path": "contextcraft/analyzer/pattern_detector.py",
@@ -388,7 +488,8 @@
         "GRAPHQL_PATTERNS",
         "ENV_PATTERNS",
         "CONFIG_FILE_PATTERNS"
-      ]
+      ],
+      "warnings": []
     },
     {
       "path": "contextcraft/analyzer/__init__.py",
@@ -397,7 +498,8 @@
       "functions": [],
       "constants": [
         "__all__"
-      ]
+      ],
+      "warnings": []
     }
   ],
   "patterns": {
@@ -436,6 +538,7 @@
         "contextcraft",
         "os"
       ],
+      "contextcraft/constants.py": [],
       "contextcraft/formatter.py": [
         "__future__",
         "re",
@@ -448,15 +551,32 @@
         "re",
         "dataclasses",
         "pathlib",
-        "pathspec"
+        "pathspec",
+        "contextcraft"
       ],
       "contextcraft/synthesizer.py": [
         "__future__",
         "json",
+        "time",
         "typing",
+        "contextcraft",
+        "anthropic",
         "anthropic"
       ],
       "contextcraft/__init__.py": [],
+      "tests/test_analyzers.py": [
+        "pathlib",
+        "pytest",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft",
+        "contextcraft"
+      ],
+      "tests/test_formatter.py": [
+        "pathlib",
+        "pytest",
+        "contextcraft"
+      ],
       "tests/test_scanner.py": [
         "pathlib",
         "pytest",
@@ -482,6 +602,7 @@
         "collections",
         "dataclasses",
         "typing",
+        "contextcraft",
         "contextcraft"
       ],
       "contextcraft/analyzer/git_analyzer.py": [
@@ -497,6 +618,7 @@
         "re",
         "dataclasses",
         "typing",
+        "contextcraft",
         "contextcraft"
       ],
       "contextcraft/analyzer/__init__.py": [
@@ -517,10 +639,19 @@
         "contextcraft/cli.py",
         "contextcraft/cli.py",
         "contextcraft/formatter.py",
+        "contextcraft/scanner.py",
+        "contextcraft/synthesizer.py",
+        "tests/test_analyzers.py",
+        "tests/test_analyzers.py",
+        "tests/test_analyzers.py",
+        "tests/test_analyzers.py",
+        "tests/test_formatter.py",
         "tests/test_scanner.py",
         "contextcraft/analyzer/ast_parser.py",
         "contextcraft/analyzer/dependency_graph.py",
+        "contextcraft/analyzer/dependency_graph.py",
         "contextcraft/analyzer/git_analyzer.py",
+        "contextcraft/analyzer/pattern_detector.py",
         "contextcraft/analyzer/pattern_detector.py",
         "contextcraft/analyzer/__init__.py",
         "contextcraft/analyzer/__init__.py",
@@ -531,7 +662,7 @@
     "top_internal_modules": [
       [
         "contextcraft",
-        18
+        27
       ],
       [
         "ast",
@@ -543,6 +674,77 @@
       ]
     ]
   },
-  "git_context": null,
+  "git_context": {
+    "main_branch": "main",
+    "recent_commits": [
+      [
+        "a2c1766",
+        "Initial commit of ContextCraft, a CLI tool for analyzing code repositories and generating structured Context Packs for AI coding tools. Added core functionality including file scanning, analysis, and synthesis using the Claude API. Included example environment configuration, project metadata, and basic usage documentation in README."
+      ]
+    ],
+    "hotspot_files": [
+      [
+        ".env.example",
+        1
+      ],
+      [
+        "README.md",
+        1
+      ],
+      [
+        "context.pack.json",
+        1
+      ],
+      [
+        "contextcraft.egg-info/PKG-INFO",
+        1
+      ],
+      [
+        "contextcraft.egg-info/SOURCES.txt",
+        1
+      ],
+      [
+        "contextcraft.egg-info/dependency_links.txt",
+        1
+      ],
+      [
+        "contextcraft.egg-info/entry_points.txt",
+        1
+      ],
+      [
+        "contextcraft.egg-info/requires.txt",
+        1
+      ],
+      [
+        "contextcraft.egg-info/top_level.txt",
+        1
+      ],
+      [
+        "contextcraft/__init__.py",
+        1
+      ],
+      [
+        "contextcraft/__pycache__/__init__.cpython-312.pyc",
+        1
+      ],
+      [
+        "contextcraft/__pycache__/cli.cpython-312.pyc",
+        1
+      ],
+      [
+        "contextcraft/__pycache__/formatter.cpython-312.pyc",
+        1
+      ],
+      [
+        "contextcraft/__pycache__/scanner.cpython-312.pyc",
+        1
+      ],
+      [
+        "contextcraft/__pycache__/synthesizer.cpython-312.pyc",
+        1
+      ]
+    ],
+    "is_repo": true
+  },
   "warnings": []
 }

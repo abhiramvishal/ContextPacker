@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pathspec
 
+from contextcraft.constants import MAX_FILE_READ_BYTES
+
 # Default patterns to skip (in addition to .gitignore)
 DEFAULT_SKIP_PATTERNS = """
 .git/
@@ -187,7 +189,7 @@ def scan_repo(repo_path: Path) -> FileTree:
     return FileTree(root=root, files=files, primary_languages=primary_languages, warnings=warnings)
 
 
-def read_file_safe(path: Path, encoding: str = "utf-8", max_size: int = 2 * 1024 * 1024) -> str | None:
+def read_file_safe(path: Path, encoding: str = "utf-8", max_size: int = MAX_FILE_READ_BYTES) -> str | None:
     """
     Read file contents safely. Returns None on encoding error or if binary/large.
     """

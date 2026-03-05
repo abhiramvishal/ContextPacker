@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from contextcraft.constants import MAX_FILES_FOR_PATTERNS
 from contextcraft.scanner import FileInfo, FileTree, read_file_safe
 
 
@@ -138,7 +139,7 @@ def _detect_config_style(sources: list[str]) -> list[str]:
     return out
 
 
-def detect_patterns(file_tree: FileTree, max_files: int = 200) -> Patterns:
+def detect_patterns(file_tree: FileTree, max_files: int = MAX_FILES_FOR_PATTERNS) -> Patterns:
     """
     Analyze naming conventions, test framework, error handling, API style, config.
     Samples up to max_files of readable source files.

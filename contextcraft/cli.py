@@ -25,7 +25,7 @@ from contextcraft.analyzer.dependency_graph import build_dependency_graph, depen
 from contextcraft.analyzer.git_analyzer import analyze_git, git_context_to_dict
 from contextcraft.analyzer.pattern_detector import detect_patterns, patterns_to_dict
 from contextcraft.formatter import format_context_pack
-from contextcraft.scanner import scan_repo
+from contextcraft.scanner import FileTree, scan_repo
 from contextcraft.synthesizer import build_analysis_payload, synthesize
 
 app = typer.Typer(
@@ -47,6 +47,29 @@ def _get_api_key() -> str | None:
     load_dotenv()
     import os
     return os.environ.get("ANTHROPIC_API_KEY")
+
+
+def _run_analysis(file_tree: FileTree) -> tuple[list[dict], list[str]]:
+    """Run AST parsing on all language files; return (file_analyses, warnings)."""
+    warnings: list[str] = []
+    file_analyses: list[dict] = []
+    for f in file_tree.files:
+        if f.language:
+            analysis = parse_file(f)
+            if analysis:
+                file_analyses.append(analysis_to_dict(analysis))
+                warnings.extend(analysis.warnings)
+            else:
+                warnings.append(f"Could not parse: {f.relative_path}")
+    return (file_analyses, warnings)
+
+
+def _run_git_and_patterns(file_tree: FileTree, repo_path: Path) -> tuple:
+    """Run pattern detection, dependency graph, and git analysis; return (patterns, dependency_graph, git_context)."""
+    patterns = detect_patterns(file_tree)
+    dependency_graph = build_dependency_graph(file_tree)
+    git_context = analyze_git(repo_path, file_tree)
+    return (patterns, dependency_graph, git_context)
 
 
 @app.command()
@@ -96,18 +119,9 @@ def init(
         progress.update(task_scan, completed=True)
 
         task_analyze = progress.add_task("Analyzing...", total=None)
-        file_analyses: list[dict] = []
-        for f in file_tree.files:
-            if f.language:
-                analysis = parse_file(f)
-                if analysis:
-                    file_analyses.append(analysis_to_dict(analysis))
-                else:
-                    warnings.append(f"Could not parse: {f.relative_path}")
-
-        patterns = detect_patterns(file_tree)
-        dependency_graph = build_dependency_graph(file_tree)
-        git_context = analyze_git(repo_path, file_tree)
+        file_analyses, analysis_warnings = _run_analysis(file_tree)
+        warnings.extend(analysis_warnings)
+        patterns, dependency_graph, git_context = _run_git_and_patterns(file_tree, repo_path)
         progress.update(task_analyze, completed=True)
 
         file_tree_dict = {
@@ -121,30 +135,17 @@ def init(
 
         if no_ai:
             progress.add_task("Skipping synthesis (--no-ai)...", completed=True)
-            if format == "json":
-                out = {
-                    "file_tree": file_tree_dict,
-                    "file_analyses": file_analyses,
-                    "patterns": patterns_dict,
-                    "dependency_graph": dep_dict,
-                    "git_context": git_dict,
-                    "warnings": warnings,
-                }
-                out_path = repo_path / "context.pack.json"
-                out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
-                console.print(f"[green]Wrote[/] {out_path}")
-            else:
-                out_path = repo_path / "context.pack.json"
-                out = {
-                    "file_tree": file_tree_dict,
-                    "file_analyses": file_analyses,
-                    "patterns": patterns_dict,
-                    "dependency_graph": dep_dict,
-                    "git_context": git_dict,
-                    "warnings": warnings,
-                }
-                out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
-                console.print(f"[green]Wrote[/] {out_path} (raw analysis; use without --no-ai for markdown).")
+            out = {
+                "file_tree": file_tree_dict,
+                "file_analyses": file_analyses,
+                "patterns": patterns_dict,
+                "dependency_graph": dep_dict,
+                "git_context": git_dict,
+                "warnings": warnings,
+            }
+            out_path = repo_path / "context.pack.json"
+            out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
+            console.print(f"[green]Wrote[/] {out_path}" + (" (raw analysis; use without --no-ai for markdown)." if format != "json" else ""))
             if warnings:
                 console.print("[yellow]Warnings:[/]", *warnings[:10], sep="\n  ")
             return

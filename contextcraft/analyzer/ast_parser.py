@@ -36,6 +36,7 @@ class FileAnalysis:
     classes: list[ClassInfo] = field(default_factory=list)
     functions: list[FunctionInfo] = field(default_factory=list)
     constants: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 def _get_docstring(node: ast.AST) -> str | None:
@@ -104,10 +105,12 @@ def _js_ts_analyze_tree_sitter(source: bytes, path: str, language: str) -> FileA
         lang = Language(tsjs.language())
         parser = Parser(lang)
         tree = parser.parse(source)
-    except Exception:
+    except Exception as e:
+        out.warnings.append(f"tree-sitter {language} parse failed: {e!s}")
         return out
     root = tree.root_node
     if not root:
+        out.warnings.append(f"tree-sitter {language} returned empty tree")
         return out
 
     def get_text(node: Node) -> str:
@@ -157,10 +160,12 @@ def _java_analyze_tree_sitter(source: bytes, path: str) -> FileAnalysis:
         lang = Language(tsjava.language())
         parser = Parser(lang)
         tree = parser.parse(source)
-    except Exception:
+    except Exception as e:
+        out.warnings.append(f"tree-sitter java parse failed: {e!s}")
         return out
     root = tree.root_node
     if not root:
+        out.warnings.append("tree-sitter java returned empty tree")
         return out
 
     def get_text(node: Node) -> str:
@@ -225,4 +230,5 @@ def analysis_to_dict(analysis: FileAnalysis) -> dict[str, Any]:
             for f in analysis.functions
         ],
         "constants": analysis.constants,
+        "warnings": analysis.warnings,
     }
