@@ -85,7 +85,8 @@ def format_as_html(markdown_content: str, repo_name: str) -> str:
         nonlocal code_buf, code_lang
         if code_buf:
             cls = f" language-{code_lang}" if code_lang else ""
-            out.append(f"<pre><code class=\"{cls.strip()}\">{escape('\n'.join(code_buf))}</code></pre>")
+            joined = "\n".join(code_buf)
+            out.append(f'<pre><code class="{cls.strip()}">{escape(joined)}</code></pre>')
             code_buf = []
             code_lang = ""
 
