@@ -29,7 +29,7 @@ class FunctionInfo:
 
 @dataclass
 class FileAnalysis:
-    """Structured analysis for one file: path, language, classes, functions, constants."""
+    """Structured analysis for one file: path, language, classes, functions, constants, metrics."""
 
     path: str
     language: str
@@ -37,6 +37,7 @@ class FileAnalysis:
     functions: list[FunctionInfo] = field(default_factory=list)
     constants: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 
 def _get_docstring(node: ast.AST) -> str | None:
@@ -67,6 +68,25 @@ def _format_signature(f: ast.FunctionDef) -> str:
     return sig
 
 
+def _compute_python_metrics(source: str, out: FileAnalysis, tree: ast.AST) -> None:
+    """Populate metrics using ast line numbers."""
+    lines = source.splitlines()
+    out.metrics["lines"] = len(lines)
+    out.metrics["blank_lines"] = sum(1 for L in lines if not L.strip())
+    out.metrics["function_count"] = len(out.functions)
+    out.metrics["class_count"] = len(out.classes)
+    func_linenos: list[int] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            func_linenos.append(node.lineno)
+    func_linenos.sort()
+    if len(func_linenos) < 2:
+        out.metrics["avg_function_length"] = 0
+    else:
+        gaps = [func_linenos[i + 1] - func_linenos[i] for i in range(len(func_linenos) - 1)]
+        out.metrics["avg_function_length"] = round(sum(gaps) / len(gaps), 1)
+
+
 def _analyze_python(source: str, path: str) -> FileAnalysis:
     """Use stdlib ast to extract classes, functions, constants from Python."""
     out = FileAnalysis(path=path, language="python")
@@ -90,8 +110,8 @@ def _analyze_python(source: str, path: str) -> FileAnalysis:
         elif isinstance(node, ast.Assign):
             for t in node.targets:
                 if isinstance(t, ast.Name) and isinstance(t.ctx, ast.Store):
-                    # Constant-like: name only (could check value for literal)
                     out.constants.append(t.id)
+    _compute_python_metrics(source, out, tree)
     return out
 
 
@@ -137,17 +157,53 @@ def _js_ts_analyze_tree_sitter(source: bytes, path: str, language: str) -> FileA
                 out.functions.append(
                     FunctionInfo(name=get_text(name_node).strip(), signature=sig, docstring=None)
                 )
-        elif node.type == "arrow_function":
-            # Could be in variable declarator: const foo = () => {}
-            pass
+        elif node.type == "variable_declarator":
+            # const/let/var foo = () => {} or async () => {}
+            name_node = node.child_by_field_name("name")
+            value_node = node.child_by_field_name("value")
+            if name_node and value_node and value_node.type == "arrow_function":
+                name_str = get_text(name_node).strip()
+                if name_str:
+                    sig = get_text(value_node).split("{")[0].strip() + " {}"
+                    out.functions.append(
+                        FunctionInfo(name=name_str, signature=sig, docstring=None)
+                    )
         elif node.type == "export_statement":
+            # Walk children so export default function foo / export function foo are still captured
             pass
         for c in node.children:
             walk(c)
 
     walk(root)
-    # Dedupe classes and fill methods by scanning again for method_definition under class
+
+    # Metrics: lines, blank_lines, function_count, class_count, avg_function_length
+    lines = source.decode("utf-8", errors="replace").splitlines()
+    out.metrics["lines"] = len(lines)
+    out.metrics["blank_lines"] = sum(1 for L in lines if not L.strip())
+    out.metrics["function_count"] = len(out.functions)
+    out.metrics["class_count"] = len(out.classes)
+    func_linenos: list[int] = []
+    _collect_js_ts_function_lines(root, func_linenos)
+    if len(func_linenos) < 2:
+        out.metrics["avg_function_length"] = 0
+    else:
+        func_linenos.sort()
+        gaps = [func_linenos[i + 1] - func_linenos[i] for i in range(len(func_linenos) - 1)]
+        out.metrics["avg_function_length"] = round(sum(gaps) / len(gaps), 1)
+
     return out
+
+
+def _collect_js_ts_function_lines(node: Any, out_list: list[int]) -> None:
+    """Recursively collect line numbers of function_declaration and arrow_function (in variable_declarator)."""
+    if getattr(node, "type", None) == "function_declaration":
+        out_list.append(node.start_point[0] + 1)
+    elif getattr(node, "type", None) == "variable_declarator":
+        val = node.child_by_field_name("value")
+        if val and getattr(val, "type", None) == "arrow_function":
+            out_list.append(val.start_point[0] + 1)
+    for c in getattr(node, "children", []):
+        _collect_js_ts_function_lines(c, out_list)
 
 
 def _java_analyze_tree_sitter(source: bytes, path: str) -> FileAnalysis:
@@ -191,7 +247,31 @@ def _java_analyze_tree_sitter(source: bytes, path: str) -> FileAnalysis:
             walk(c)
 
     walk(root)
+
+    lines = source.decode("utf-8", errors="replace").splitlines()
+    out.metrics["lines"] = len(lines)
+    out.metrics["blank_lines"] = sum(1 for L in lines if not L.strip())
+    out.metrics["function_count"] = len(out.functions)
+    out.metrics["class_count"] = len(out.classes)
+    method_linenos: list[int] = []
+    for c in root.children:
+        _collect_java_method_lines(c, method_linenos)
+    if len(method_linenos) < 2:
+        out.metrics["avg_function_length"] = 0
+    else:
+        method_linenos.sort()
+        gaps = [method_linenos[i + 1] - method_linenos[i] for i in range(len(method_linenos) - 1)]
+        out.metrics["avg_function_length"] = round(sum(gaps) / len(gaps), 1)
+
     return out
+
+
+def _collect_java_method_lines(node: Any, out_list: list[int]) -> None:
+    """Recursively collect line numbers of method_declaration in Java."""
+    if getattr(node, "type", None) == "method_declaration":
+        out_list.append(node.start_point[0] + 1)
+    for c in getattr(node, "children", []):
+        _collect_java_method_lines(c, out_list)
 
 
 def parse_file(file_info: FileInfo, source: str | None = None) -> FileAnalysis | None:
@@ -231,4 +311,5 @@ def analysis_to_dict(analysis: FileAnalysis) -> dict[str, Any]:
         ],
         "constants": analysis.constants,
         "warnings": analysis.warnings,
+        "metrics": analysis.metrics,
     }

@@ -57,6 +57,11 @@ OTHER_CONST = 42
     assert analysis.functions[0].name == "top_level_func"
     assert "a: int" in analysis.functions[0].signature
     assert "OTHER_CONST" in analysis.constants
+    assert "metrics" in analysis_to_dict(analysis)
+    metrics = analysis.metrics
+    assert "lines" in metrics
+    assert "function_count" in metrics
+    assert "class_count" in metrics
 
 
 def test_analysis_to_dict_includes_warnings() -> None:

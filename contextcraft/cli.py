@@ -24,6 +24,7 @@ from contextcraft.analyzer.ast_parser import analysis_to_dict, parse_file
 from contextcraft.analyzer.dependency_graph import build_dependency_graph, dependency_graph_to_dict
 from contextcraft.analyzer.git_analyzer import analyze_git, git_context_to_dict
 from contextcraft.analyzer.pattern_detector import detect_patterns, patterns_to_dict
+from contextcraft.constants import DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_MODEL
 from contextcraft.formatter import format_context_pack
 from contextcraft.scanner import FileTree, scan_repo
 from contextcraft.synthesizer import build_analysis_payload, synthesize
@@ -47,6 +48,13 @@ def _get_api_key() -> str | None:
     load_dotenv()
     import os
     return os.environ.get("ANTHROPIC_API_KEY")
+
+
+def _resolve_output_dir(repo_path: Path, output_dir: Path | None) -> Path:
+    """Output directory for pack files; create if needed."""
+    out = (output_dir or repo_path).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    return out
 
 
 def _run_analysis(file_tree: FileTree) -> tuple[list[dict], list[str]]:
@@ -93,6 +101,26 @@ def init(
         "-f",
         help="Output format: markdown or json.",
     ),
+    max_tokens: int = typer.Option(
+        DEFAULT_MAX_OUTPUT_TOKENS,
+        "--max-tokens",
+        help="Max tokens for Claude output (default 2000, max 8192).",
+        min=1,
+        max=8192,
+    ),
+    model: str = typer.Option(
+        DEFAULT_MODEL,
+        "--model",
+        help="Claude model ID.",
+    ),
+    output_dir: Path | None = typer.Option(
+        None,
+        "--output-dir",
+        "-o",
+        path_type=Path,
+        help="Directory for output files (default: repo path).",
+        exists=False,
+    ),
 ) -> None:
     """
     Analyze the repository and generate context.pack.md (or JSON).
@@ -102,6 +130,7 @@ def init(
         console.print("[red]Error:[/] Path is not a directory.")
         raise typer.Exit(1)
 
+    out_dir = _resolve_output_dir(repo_path, output_dir)
     warnings: list[str] = []
 
     with Progress(
@@ -143,7 +172,7 @@ def init(
                 "git_context": git_dict,
                 "warnings": warnings,
             }
-            out_path = repo_path / "context.pack.json"
+            out_path = out_dir / "context.pack.json"
             out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
             console.print(f"[green]Wrote[/] {out_path}" + (" (raw analysis; use without --no-ai for markdown)." if format != "json" else ""))
             if warnings:
@@ -154,8 +183,7 @@ def init(
         if not api_key:
             console.print("[red]Error:[/] ANTHROPIC_API_KEY is not set.")
             console.print("Set it in .env or environment, or run with [bold]--no-ai[/] for offline extraction.")
-            # Save raw analysis so user can retry synthesis later
-            out_path = repo_path / "context.pack.json"
+            out_path = out_dir / "context.pack.json"
             out = {
                 "file_tree": file_tree_dict,
                 "file_analyses": file_analyses,
@@ -170,14 +198,17 @@ def init(
 
         task_synth = progress.add_task("Synthesizing...", total=None)
         try:
-            payload = build_analysis_payload(
+            payload_json, metrics_summary = build_analysis_payload(
                 file_tree_dict, file_analyses, patterns_dict, dep_dict, git_dict
             )
-            claude_output = synthesize(payload, api_key)
+            claude_output = synthesize(
+                payload_json, api_key,
+                model=model, max_tokens=max_tokens, metrics_summary=metrics_summary,
+            )
         except Exception as e:
             progress.update(task_synth, completed=True)
             console.print(f"[red]Claude API failed:[/] {e}")
-            out_path = repo_path / "context.pack.json"
+            out_path = out_dir / "context.pack.json"
             out = {
                 "file_tree": file_tree_dict,
                 "file_analyses": file_analyses,
@@ -193,18 +224,132 @@ def init(
 
         task_write = progress.add_task("Writing...", total=None)
         repo_name = repo_path.name or "repo"
-        out_md = repo_path / "context.pack.md"
+        out_md = out_dir / "context.pack.md"
         format_context_pack(claude_output, repo_name, out_md)
         progress.update(task_write, completed=True)
 
     if format == "json":
-        out_json = repo_path / "context.pack.json"
+        out_json = out_dir / "context.pack.json"
         json_out = {"synthesis": claude_output, "file_tree": file_tree_dict, "patterns": patterns_dict}
         out_json.write_text(json.dumps(json_out, indent=2), encoding="utf-8")
         console.print(f"[green]Wrote[/] {out_json}")
     console.print(f"[green]Wrote[/] {out_md}")
     if warnings:
         console.print("[yellow]Warnings:[/]", *warnings[:10], sep="\n  ")
+
+
+@app.command()
+def update(
+    repo_path: Path = typer.Argument(
+        ".",
+        help="Path to the repository (must contain context.pack.json).",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
+    ),
+    format: str = typer.Option(
+        "markdown",
+        "--format",
+        "-f",
+        help="Output format: also write synthesis as json.",
+    ),
+    max_tokens: int = typer.Option(
+        DEFAULT_MAX_OUTPUT_TOKENS,
+        "--max-tokens",
+        help="Max tokens for Claude output.",
+        min=1,
+        max=8192,
+    ),
+    model: str = typer.Option(
+        DEFAULT_MODEL,
+        "--model",
+        help="Claude model ID.",
+    ),
+    output_dir: Path | None = typer.Option(
+        None,
+        "--output-dir",
+        "-o",
+        path_type=Path,
+        help="Directory for output files (default: repo path).",
+        exists=False,
+    ),
+) -> None:
+    """
+    Re-run synthesis from cached context.pack.json (no rescan).
+    Writes fresh context.pack.md. Fails if context.pack.json is missing or invalid.
+    """
+    out_dir = _resolve_output_dir(repo_path, output_dir)
+    pack_json_path = repo_path / "context.pack.json"
+    if not pack_json_path.is_file():
+        console.print("[red]Error:[/] context.pack.json not found. Run [bold]contextcraft init[/] first.")
+        raise typer.Exit(1)
+
+    try:
+        data = json.loads(pack_json_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        console.print(f"[red]Error:[/] Could not read context.pack.json: {e}")
+        raise typer.Exit(1)
+
+    required = ("file_tree", "file_analyses", "patterns", "dependency_graph", "git_context")
+    if not all(k in data for k in required):
+        console.print("[red]Error:[/] context.pack.json missing raw analysis keys. Run [bold]contextcraft init[/] to regenerate.")
+        raise typer.Exit(1)
+
+    file_tree_dict = data["file_tree"]
+    file_analyses = data["file_analyses"]
+    patterns_dict = data["patterns"]
+    dep_dict = data["dependency_graph"]
+    git_dict = data.get("git_context")
+
+    api_key = _get_api_key()
+    if not api_key:
+        console.print("[red]Error:[/] ANTHROPIC_API_KEY is not set.")
+        raise typer.Exit(1)
+
+    payload_json, metrics_summary = build_analysis_payload(
+        file_tree_dict, file_analyses, patterns_dict, dep_dict, git_dict
+    )
+    try:
+        claude_output = synthesize(
+            payload_json, api_key,
+            model=model, max_tokens=max_tokens, metrics_summary=metrics_summary,
+        )
+    except Exception as e:
+        console.print(f"[red]Claude API failed:[/] {e}")
+        raise typer.Exit(1)
+
+    repo_name = repo_path.name or "repo"
+    out_md = out_dir / "context.pack.md"
+    old_generated: str | None = None
+    if out_md.exists():
+        try:
+            head = out_md.read_text(encoding="utf-8").split("---")[1]
+            for line in head.splitlines():
+                if line.strip().startswith("generated:"):
+                    old_generated = line.split(":", 1)[1].strip()
+                    break
+        except Exception:
+            pass
+
+    format_context_pack(claude_output, repo_name, out_md)
+    new_doc = out_md.read_text(encoding="utf-8")
+    new_generated = ""
+    for line in new_doc.split("---")[1].splitlines():
+        if line.strip().startswith("generated:"):
+            new_generated = line.split(":", 1)[1].strip()
+            break
+
+    if old_generated:
+        console.print(f"[dim]Previous:[/] {old_generated} [dim]-> New:[/] {new_generated}")
+    console.print(f"[green]Wrote[/] {out_md}")
+
+    if format == "json":
+        out_json = out_dir / "context.pack.json"
+        existing = json.loads(pack_json_path.read_text(encoding="utf-8"))
+        existing["synthesis"] = claude_output
+        out_json.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+        console.print(f"[green]Wrote[/] {out_json}")
 
 
 def main() -> None:

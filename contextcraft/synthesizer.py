@@ -6,14 +6,11 @@ import json
 import time
 from typing import Any
 
-from contextcraft.constants import MAX_FILES_FOR_SYNTHESIS
-
-ANTHROPIC_MODEL = "claude-sonnet-4-5"
-MAX_OUTPUT_TOKENS = 2000
+from contextcraft.constants import DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_MODEL, MAX_FILES_FOR_SYNTHESIS
 
 SYSTEM_PROMPT = """You are a senior software architect. Your job is to write a concise, structured Context Pack for an AI coding assistant. The pack should tell the AI everything it needs to know to write idiomatic code for this codebase. Be precise and dense — every word should add information."""
 
-USER_PROMPT_TEMPLATE = """Based on the following structured analysis of a codebase, produce a Context Pack in this exact structure. Use markdown. Max output ~2000 tokens. Dense, not verbose.
+USER_PROMPT_TEMPLATE = """Based on the following structured analysis of a codebase, produce a Context Pack in this exact structure. Use markdown. Dense, not verbose.
 
 1. ## Project Overview (2-3 sentences: what it does, stack, scale)
 2. ## Architecture (how the codebase is organized, key modules and their roles)
@@ -26,8 +23,33 @@ USER_PROMPT_TEMPLATE = """Based on the following structured analysis of a codeba
 
 Structured analysis (JSON):
 """
-# Trailing newline and placeholder for payload
 USER_PROMPT_END = "\n"
+
+
+def _build_metrics_summary(file_analyses: list[dict[str, Any]]) -> str:
+    """Build Metrics Summary section for the user prompt if file_analyses have metrics."""
+    if not file_analyses:
+        return ""
+    with_metrics = [a for a in file_analyses if a.get("metrics")]
+    if not with_metrics:
+        return ""
+    total_lines = sum(a["metrics"].get("lines", 0) for a in with_metrics)
+    by_lines = sorted(with_metrics, key=lambda a: a["metrics"].get("lines", 0), reverse=True)[:5]
+    by_functions = sorted(with_metrics, key=lambda a: a["metrics"].get("function_count", 0), reverse=True)[:5]
+    lines = [
+        "Metrics Summary",
+        f"- Total files analyzed: {len(file_analyses)}",
+        f"- Total lines of code: {total_lines}",
+        "- Top 5 largest files by line count:",
+    ]
+    for a in by_lines:
+        path = a.get("path", "?")
+        lines.append(f"  - {path} ({a['metrics'].get('lines', 0)} lines)")
+    lines.append("- Top 5 files by function count:")
+    for a in by_functions:
+        path = a.get("path", "?")
+        lines.append(f"  - {path} ({a['metrics'].get('function_count', 0)} functions)")
+    return "\n".join(lines) + "\n\n"
 
 
 def build_analysis_payload(
@@ -36,8 +58,8 @@ def build_analysis_payload(
     patterns: dict[str, Any],
     dependency_graph: dict[str, Any],
     git_context: dict[str, Any] | None,
-) -> str:
-    """Build a single JSON payload for the user prompt."""
+) -> tuple[str, str]:
+    """Build JSON payload string and optional metrics summary. Returns (payload_json, metrics_summary)."""
     payload = {
         "file_tree": {
             "root": str(file_tree.get("root", "")),
@@ -49,14 +71,17 @@ def build_analysis_payload(
         "dependency_graph": dependency_graph,
         "git_context": git_context,
     }
-    return json.dumps(payload, indent=0)
+    payload_json = json.dumps(payload, indent=0)
+    metrics_summary = _build_metrics_summary(file_analyses)
+    return (payload_json, metrics_summary)
 
 
 def synthesize(
     analysis_payload: str,
     api_key: str,
-    model: str = ANTHROPIC_MODEL,
-    max_tokens: int = MAX_OUTPUT_TOKENS,
+    model: str = DEFAULT_MODEL,
+    max_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+    metrics_summary: str = "",
 ) -> str:
     """
     Call Claude API to generate the Context Pack text.
@@ -67,7 +92,12 @@ def synthesize(
     from anthropic import APIStatusError
 
     client = Anthropic(api_key=api_key)
-    user_content = USER_PROMPT_TEMPLATE + analysis_payload + USER_PROMPT_END
+    user_content = (
+        USER_PROMPT_TEMPLATE
+        + (metrics_summary if metrics_summary else "")
+        + analysis_payload
+        + USER_PROMPT_END
+    )
     delays = [2, 4, 8]
     last_error: Exception | None = None
 
