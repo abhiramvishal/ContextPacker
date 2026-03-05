@@ -21,14 +21,25 @@ class DependencyGraph:
     top_internal: list[tuple[str, int]] = field(default_factory=list)  # (module, count) top 10
 
 
+# Go stdlib single-word packages to skip
+_GO_STDLIB = frozenset({"fmt", "os", "io", "bufio", "bytes", "strings", "strconv", "sort", "encoding", "log", "math", "net", "http", "json", "time", "context", "errors", "flag", "path", "regexp", "sync", "testing", "unicode", "crypto", "database", "html", "image", "mime", "reflect", "runtime", "text", "url", "archive", "compress", "container", "debug", "embed", "expvar", "hash", "index", "plugin", "builtin", "syscall", "unsafe", "internal"})
+
+# Rust stdlib crates to skip
+_RUST_STDLIB = frozenset({"std", "core", "alloc"})
+
+
 def _normalize_module_path(relative_path: str, language: str) -> str:
-    """Normalize file path to module name (e.g. for Python: path/to/module.py -> path.to.module)."""
+    """Normalize file path to module name."""
     if language == "python":
         return relative_path.replace("\\", "/").replace("/", ".").replace(".py", "").rstrip(".")
     if language in ("javascript", "typescript"):
         return relative_path.replace("\\", "/").replace(".js", "").replace(".ts", "").replace(".jsx", "").replace(".tsx", "")
     if language == "java":
         return relative_path.replace("\\", "/").replace(".java", "")
+    if language == "go":
+        return relative_path.replace("\\", "/").replace(".go", "")
+    if language == "rust":
+        return relative_path.replace("\\", "/").replace(".rs", "")
     return relative_path
 
 
@@ -113,6 +124,42 @@ def _java_imports(source: str) -> list[str]:
     return imports
 
 
+def _go_imports(source: str) -> list[str]:
+    """Extract import targets from Go: import \"...\" and import ( \"...\" ); last segment as module; skip stdlib."""
+    imports: list[str] = []
+    # import "path/to/pkg"
+    for m in re.finditer(r'import\s+"([^"]+)"', source):
+        path = m.group(1).strip()
+        if "/" in path:
+            name = path.split("/")[-1]
+        else:
+            name = path
+        if name not in _GO_STDLIB:
+            imports.append(name)
+    # import ( "pkg1" \n "pkg2" )
+    for block in re.finditer(r'import\s*\(\s*(.*?)\s*\)', source, re.DOTALL):
+        for m in re.finditer(r'"([^"]+)"', block.group(1)):
+            path = m.group(1).strip()
+            if "/" in path:
+                name = path.split("/")[-1]
+            else:
+                name = path
+            if name not in _GO_STDLIB:
+                imports.append(name)
+    return imports
+
+
+def _rust_imports(source: str) -> list[str]:
+    """Extract import targets from Rust: use foo::bar::baz; top-level crate (first segment); skip std/core/alloc."""
+    imports: list[str] = []
+    for m in re.finditer(r"use\s+([\w:]+)(?:::\*)?\s*;", source):
+        path = m.group(1).strip()
+        first = path.split("::")[0]
+        if first not in _RUST_STDLIB:
+            imports.append(first)
+    return imports
+
+
 def build_dependency_graph(file_tree: FileTree, max_files: int = MAX_FILES_FOR_DEP_GRAPH) -> DependencyGraph:
     """
     Parse imports across the repo; build graph; return top 10 most-imported internal modules.
@@ -173,6 +220,18 @@ def build_dependency_graph(file_tree: FileTree, max_files: int = MAX_FILES_FOR_D
                 first = imp.split(".")[0]
                 if first in internal_prefixes:
                     graph.imported_by.setdefault(first, []).append(path)
+        elif f.language == "go":
+            raw = _go_imports(src)
+            for imp in raw:
+                graph.imports[path].append(imp)
+                if imp in internal_prefixes:
+                    graph.imported_by.setdefault(imp, []).append(path)
+        elif f.language == "rust":
+            raw = _rust_imports(src)
+            for imp in raw:
+                graph.imports[path].append(imp)
+                if imp in internal_prefixes:
+                    graph.imported_by.setdefault(imp, []).append(path)
 
     # Top 10 most-imported internal modules (by path or first segment)
     internal_import_counts: dict[str, int] = defaultdict(int)

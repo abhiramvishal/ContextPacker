@@ -49,3 +49,32 @@ def test_extract_ai_briefing_footer_when_absent() -> None:
     markdown = "## Project Overview\n\nNo footer here."
     result = extract_ai_briefing_footer(markdown)
     assert result is None
+
+
+def test_format_as_html_contains_structure() -> None:
+    """format_as_html produces a string containing <html>, <h2>, <pre>."""
+    from contextcraft.formatter import format_as_html
+    md = "## Overview\n\nText.\n\n```py\nx = 1\n```"
+    html = format_as_html(md, "my-repo")
+    assert "<html" in html
+    assert "<h2>" in html
+    assert "<pre>" in html
+    assert "my-repo" in html
+
+
+def test_format_as_html_yaml_meta_div() -> None:
+    """YAML front matter is wrapped in <div class=\"meta\">."""
+    from contextcraft.formatter import format_as_html
+    md = "---\ngenerated: 2025-01-01\nrepo: r\n---\n\n## Section"
+    html = format_as_html(md, "r")
+    assert 'class="meta"' in html
+    assert "generated" in html
+
+
+def test_format_as_html_bold_and_inline_code() -> None:
+    """Bold and inline code are converted correctly."""
+    from contextcraft.formatter import format_as_html
+    md = "**bold** and `code`"
+    html = format_as_html(md, "r")
+    assert "<strong>" in html
+    assert "<code>" in html

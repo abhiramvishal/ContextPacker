@@ -1,8 +1,9 @@
-"""AST-based code structure extraction for Python (stdlib ast) and JS/TS/Java (tree-sitter)."""
+"""AST-based code structure extraction for Python (stdlib ast), JS/TS/Java (tree-sitter), Go/Rust (regex)."""
 
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -274,6 +275,80 @@ def _collect_java_method_lines(node: Any, out_list: list[int]) -> None:
         _collect_java_method_lines(c, out_list)
 
 
+def _parse_go(source: str, path: str) -> FileAnalysis:
+    """Regex-based extraction for Go: structs, functions/methods, constants; metrics."""
+    out = FileAnalysis(path=path, language="go")
+    lines = source.splitlines()
+    out.metrics["lines"] = len(lines)
+    out.metrics["blank_lines"] = sum(1 for L in lines if not L.strip())
+    func_linenos: list[int] = []
+
+    # type FooBar struct {
+    for m in re.finditer(r"type\s+(\w+)\s+struct\s*\{", source):
+        out.classes.append(ClassInfo(name=m.group(1), methods=[], docstring=None))
+
+    # func (r *Receiver) MethodName( or func FuncName(
+    for m in re.finditer(r"func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(", source):
+        name = m.group(1)
+        start = source[: m.start()].count("\n") + 1
+        func_linenos.append(start)
+        line = source[m.start() : source.find("\n", m.start())] if "\n" in source[m.start() : m.start() + 500] else source[m.start() : m.start() + 200]
+        out.functions.append(FunctionInfo(name=name, signature=line.strip().rstrip("{"), docstring=None))
+
+    # const ConstName or const ( ... )
+    for m in re.finditer(r"const\s+(\w+)\s", source):
+        out.constants.append(m.group(1))
+    for m in re.finditer(r"const\s*\(\s*\n\s*(\w+)\s", source):
+        out.constants.append(m.group(1))
+
+    out.metrics["function_count"] = len(out.functions)
+    out.metrics["class_count"] = len(out.classes)
+    if len(func_linenos) < 2:
+        out.metrics["avg_function_length"] = 0
+    else:
+        func_linenos.sort()
+        gaps = [func_linenos[i + 1] - func_linenos[i] for i in range(len(func_linenos) - 1)]
+        out.metrics["avg_function_length"] = round(sum(gaps) / len(gaps), 1)
+    return out
+
+
+def _parse_rust(source: str, path: str) -> FileAnalysis:
+    """Regex-based extraction for Rust: struct/enum, fn, const; metrics."""
+    out = FileAnalysis(path=path, language="rust")
+    lines = source.splitlines()
+    out.metrics["lines"] = len(lines)
+    out.metrics["blank_lines"] = sum(1 for L in lines if not L.strip())
+    func_linenos: list[int] = []
+
+    # pub struct Foo / struct Foo / pub enum Foo / enum Foo
+    for m in re.finditer(r"(?:pub\s+)?(?:struct|enum)\s+(\w+)\s*[<\{]", source):
+        out.classes.append(ClassInfo(name=m.group(1), methods=[], docstring=None))
+    for m in re.finditer(r"(?:pub\s+)?(?:struct|enum)\s+(\w+)\s*;", source):
+        out.classes.append(ClassInfo(name=m.group(1), methods=[], docstring=None))
+
+    # pub fn foo_bar( / fn foo_bar(
+    for m in re.finditer(r"(?:pub\s+)?fn\s+(\w+)\s*\(", source):
+        name = m.group(1)
+        start = source[: m.start()].count("\n") + 1
+        func_linenos.append(start)
+        line = source[m.start() : source.find("\n", m.start())] if "\n" in source[m.start() : m.start() + 500] else source[m.start() : m.start() + 200]
+        out.functions.append(FunctionInfo(name=name, signature=line.strip().rstrip("{"), docstring=None))
+
+    # pub const FOO: / const FOO:
+    for m in re.finditer(r"(?:pub\s+)?const\s+(\w+)\s*:", source):
+        out.constants.append(m.group(1))
+
+    out.metrics["function_count"] = len(out.functions)
+    out.metrics["class_count"] = len(out.classes)
+    if len(func_linenos) < 2:
+        out.metrics["avg_function_length"] = 0
+    else:
+        func_linenos.sort()
+        gaps = [func_linenos[i + 1] - func_linenos[i] for i in range(len(func_linenos) - 1)]
+        out.metrics["avg_function_length"] = round(sum(gaps) / len(gaps), 1)
+    return out
+
+
 def parse_file(file_info: FileInfo, source: str | None = None) -> FileAnalysis | None:
     """
     Parse a single file and return structured analysis (classes, functions, constants).
@@ -293,6 +368,10 @@ def parse_file(file_info: FileInfo, source: str | None = None) -> FileAnalysis |
         return _js_ts_analyze_tree_sitter(source.encode("utf-8"), path_str, "typescript")
     if lang == "java":
         return _java_analyze_tree_sitter(source.encode("utf-8"), path_str)
+    if lang == "go":
+        return _parse_go(source, path_str)
+    if lang == "rust":
+        return _parse_rust(source, path_str)
     return None
 
 

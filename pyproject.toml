@@ -29,6 +29,7 @@ dependencies = [
     "tree-sitter-java>=0.20.0",
     "pathspec>=0.12.0",
     "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

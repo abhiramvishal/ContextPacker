@@ -71,6 +71,8 @@ class FileInfo:
             ".ts": "typescript",
             ".tsx": "typescript",
             ".java": "java",
+            ".go": "go",
+            ".rs": "rust",
         }
         return ext_map.get(self.extension.lower())
 
@@ -97,8 +99,8 @@ class FileTree:
         return counts
 
 
-def _load_gitignore_spec(root: Path) -> pathspec.PathSpec:
-    """Load .gitignore rules from repo root into a PathSpec."""
+def _load_gitignore_spec(root: Path, extra_skip_patterns: list[str] | None = None) -> pathspec.PathSpec:
+    """Load .gitignore rules from repo root into a PathSpec; merge with default and extra patterns."""
     gitignore_path = root / ".gitignore"
     patterns: list[str] = []
     if gitignore_path.is_file():
@@ -108,19 +110,28 @@ def _load_gitignore_spec(root: Path) -> pathspec.PathSpec:
         except OSError:
             pass
     patterns.extend(DEFAULT_SKIP_PATTERNS)
+    if extra_skip_patterns:
+        patterns.extend(extra_skip_patterns)
     try:
         return pathspec.PathSpec.from_lines("gitignore", patterns)
     except (ValueError, TypeError):
         return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
 
-def _should_skip(path: Path, relative: str, spec: pathspec.PathSpec) -> bool:
-    """Return True if path should be skipped (gitignore or binary/skip rules)."""
-    # Normalize for pathspec: use forward slashes
+def _should_skip(
+    path: Path,
+    relative: str,
+    spec: pathspec.PathSpec,
+    extra_skip_extensions: set[str] | None = None,
+) -> bool:
+    """Return True if path should be skipped (gitignore, binary/skip rules, or extra extensions)."""
     norm = relative.replace("\\", "/")
     if spec.match_file(norm):
         return True
-    if path.suffix.lower() in BINARY_OR_SKIP_EXTENSIONS:
+    ext = path.suffix.lower()
+    if ext in BINARY_OR_SKIP_EXTENSIONS:
+        return True
+    if extra_skip_extensions and ext in extra_skip_extensions:
         return True
     return False
 
@@ -135,16 +146,27 @@ def _is_likely_binary(path: Path) -> bool:
         return True
 
 
-def scan_repo(repo_path: Path) -> FileTree:
+def scan_repo(
+    repo_path: Path,
+    extra_skip_patterns: list[str] | None = None,
+    extra_skip_extensions: list[str] | None = None,
+    include_languages: list[str] | None = None,
+) -> FileTree:
     """
     Walk the repository recursively, respecting .gitignore and skip rules.
-    Collect file paths, extensions, sizes, last modified; detect primary languages.
+    extra_skip_patterns: merged with default skip patterns.
+    extra_skip_extensions: e.g. [".xyz"] to skip by extension.
+    include_languages: if non-empty, only include files with language in this list.
     """
     root = Path(repo_path).resolve()
     if not root.is_dir():
         raise NotADirectoryError(f"Repo path is not a directory: {root}")
 
-    spec = _load_gitignore_spec(root)
+    spec = _load_gitignore_spec(root, extra_skip_patterns or [])
+    ext_skip_set: set[str] = set()
+    if extra_skip_extensions:
+        for e in extra_skip_extensions:
+            ext_skip_set.add(e.lower() if e.startswith(".") else f".{e.lower()}")
     files: list[FileInfo] = []
     warnings: list[str] = []
 
@@ -155,7 +177,7 @@ def scan_repo(repo_path: Path) -> FileTree:
             relative = path.relative_to(root).as_posix()
         except ValueError:
             continue
-        if _should_skip(path, relative, spec):
+        if _should_skip(path, relative, spec, ext_skip_set if ext_skip_set else None):
             continue
         if _is_likely_binary(path):
             continue
@@ -174,10 +196,14 @@ def scan_repo(repo_path: Path) -> FileTree:
         except OSError as e:
             warnings.append(f"Skipped {relative}: {e}")
 
-    # Primary languages by file count (only consider known languages)
+    if include_languages:
+        lang_set = {x.lower() for x in include_languages}
+        files = [f for f in files if f.language and f.language.lower() in lang_set]
+
     ext_to_lang: dict[str, str] = {
         ".py": "python", ".js": "javascript", ".jsx": "javascript",
         ".ts": "typescript", ".tsx": "typescript", ".java": "java",
+        ".go": "go", ".rs": "rust",
     }
     lang_counts: dict[str, int] = {}
     for f in files:

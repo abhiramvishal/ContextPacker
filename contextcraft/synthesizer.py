@@ -82,11 +82,12 @@ def synthesize(
     model: str = DEFAULT_MODEL,
     max_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     metrics_summary: str = "",
+    usage_out: dict | None = None,
 ) -> str:
     """
     Call Claude API to generate the Context Pack text.
     Retries up to 3 times on 429 or 529 with exponential backoff (2s, 4s, 8s).
-    Raises on other API or key errors; caller should handle and e.g. save raw JSON.
+    If usage_out dict is provided, fills input_tokens and output_tokens.
     """
     from anthropic import Anthropic
     from anthropic import APIStatusError
@@ -113,7 +114,11 @@ def synthesize(
             for block in response.content:
                 if hasattr(block, "text"):
                     text += block.text
-            return text.strip()
+            result = text.strip()
+            if usage_out is not None and hasattr(response, "usage") and response.usage is not None:
+                usage_out["input_tokens"] = getattr(response.usage, "input_tokens", 0)
+                usage_out["output_tokens"] = getattr(response.usage, "output_tokens", 0)
+            return result
         except APIStatusError as e:
             last_error = e
             if e.status_code in (429, 529) and attempt < len(delays):
