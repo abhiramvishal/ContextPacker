@@ -1,0 +1,79 @@
+{
+  "name": "contextcraft",
+  "displayName": "ContextCraft",
+  "description": "Generate structured Context Packs for AI coding tools by analyzing your codebase.",
+  "version": "0.1.0",
+  "publisher": "contextcraft",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other", "Programming Languages"],
+  "keywords": ["ai", "context", "llm", "claude", "developer-tools"],
+  "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abhiramvishal/ContextPacker"
+  },
+  "activationEvents": [
+    "onCommand:contextcraft.init",
+    "onCommand:contextcraft.update",
+    "onCommand:contextcraft.diff"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "contextcraft.init",
+        "title": "ContextCraft: Generate Context Pack"
+      },
+      {
+        "command": "contextcraft.update",
+        "title": "ContextCraft: Update Context Pack"
+      },
+      {
+        "command": "contextcraft.diff",
+        "title": "ContextCraft: Diff Context Pack"
+      }
+    ],
+    "configuration": {
+      "title": "ContextCraft",
+      "properties": {
+        "contextcraft.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key. If empty, reads from ANTHROPIC_API_KEY env var.",
+          "markdownDescription": "Your [Anthropic API key](https://console.anthropic.com/). Leave empty to use the `ANTHROPIC_API_KEY` environment variable."
+        },
+        "contextcraft.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-5",
+          "description": "Claude model ID to use for synthesis."
+        },
+        "contextcraft.maxTokens": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "maximum": 8192,
+          "description": "Maximum tokens for Claude output."
+        },
+        "contextcraft.pythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Python executable. If empty, uses 'python3' or 'python' from PATH."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0"
+  }
+}
