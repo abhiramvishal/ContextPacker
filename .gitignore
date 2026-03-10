@@ -26,3 +26,8 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
+
+# VS Code extension
+vscode-extension/node_modules/
+vscode-extension/out/
+vscode-extension/*.vsix
