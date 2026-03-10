@@ -5,8 +5,32 @@ on:
     branches:
       - main
 
+# Skip this workflow if triggered by the auto-bump commit itself
+# (prevents infinite loop: publish → bump commit → publish → ...)
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  check-trigger:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check if this is an auto-bump commit
+        id: check
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          if echo "$MSG" | grep -qE "^chore: bump version to"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping publish — triggered by auto-bump commit"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
   test:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.skip == 'false'
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
@@ -25,7 +49,8 @@ jobs:
         run: python -m pytest tests/ -v
 
   publish:
-    needs: test
+    needs: [check-trigger, test]
+    if: needs.check-trigger.outputs.skip == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
