@@ -21,7 +21,7 @@ jobs:
         id: check
         run: |
           MSG="${{ github.event.head_commit.message }}"
-          if echo "$MSG" | grep -qE "^chore: bump version to"; then
+          if echo "$MSG" | grep -qE "^chore: bump (version|ext version) to"; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "Skipping publish — triggered by auto-bump commit"
           else

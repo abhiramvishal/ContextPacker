@@ -2,27 +2,79 @@ name: Publish VS Code Extension
 
 on:
   push:
-    tags:
-      - "ext-v*"
+    branches:
+      - main
+
+concurrency:
+  group: publish-extension-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  check-trigger:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check if this is an auto-bump commit
+        id: check
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          if echo "$MSG" | grep -qE "^chore: bump (version|ext version) to"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Skipping publish — triggered by auto-bump commit"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
   publish:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.skip == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
       - name: Install dependencies
         run: cd vscode-extension && npm ci
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          CURRENT=$(node -p "require('./vscode-extension/package.json').version")
+          MAJOR=$(echo $CURRENT | cut -d. -f1)
+          MINOR=$(echo $CURRENT | cut -d. -f2)
+          PATCH=$(echo $CURRENT | cut -d. -f3)
+          NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+          cd vscode-extension && npm version $NEW --no-git-tag-version
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+          echo "Bumped $CURRENT -> $NEW"
+
+      - name: Commit and tag new version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add vscode-extension/package.json vscode-extension/package-lock.json
+          git commit -m "chore: bump ext version to ${{ steps.bump.outputs.version }}"
+          git tag "ext-v${{ steps.bump.outputs.version }}"
+          git push origin main --follow-tags
+
       - name: Package extension
         run: cd vscode-extension && npm run package
+
       - name: Publish to VS Code Marketplace
         run: cd vscode-extension && npx vsce publish --pat ${{ secrets.VSCE_PAT }}
+
       - name: Upload .vsix to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ext-v${{ steps.bump.outputs.version }}
           files: vscode-extension/*.vsix
