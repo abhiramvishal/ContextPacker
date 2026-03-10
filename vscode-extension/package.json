@@ -2,11 +2,22 @@
   "name": "contextcraft",
   "displayName": "ContextCraft",
   "description": "Generate structured Context Packs for AI coding tools by analyzing your codebase.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "contextcraft",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other", "Programming Languages"],
-  "keywords": ["ai", "context", "llm", "claude", "developer-tools"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "context",
+    "llm",
+    "claude",
+    "developer-tools"
+  ],
   "icon": "assets/icon.png",
   "repository": {
     "type": "git",
