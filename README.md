@@ -1,6 +1,6 @@
 # ContextCraft
 
-[![PyPI version](https://badge.fury.io/py/contextcraft.svg)](https://pypi.org/project/contextcraft/)
+[![PyPI version](https://badge.fury.io/py/llm-codepac.svg)](https://pypi.org/project/llm-codepac/)
 
 A Python CLI tool that analyzes a code repository and generates a structured **Context Pack** document optimized for injecting into AI coding tools (Claude, GPT, Cursor, Copilot) so they understand the codebase before writing code.
 
@@ -9,7 +9,7 @@ A Python CLI tool that analyzes a code repository and generates a structured **C
 ### CLI
 
 ```bash
-pip install contextcraft
+pip install llm-codepac
 ```
 
 ### VS Code Extension
@@ -41,7 +41,7 @@ Create a `.env` file (see `.env.example`) or set:
 
 ## Distribution
 
-- **Install from PyPI:** `pip install contextcraft`
+- **Install from PyPI:** `pip install llm-codepac`
 - **Install the VS Code extension:** [ContextCraft on the Marketplace](https://marketplace.visualstudio.com/) (when published), or install manually: download the `.vsix` from [Releases](https://github.com/abhiramvishal/ContextPacker/releases) and run *Extensions: Install from VSIX...* in VS Code.
 - **Publish a new Python release:** tag with `git tag v0.x.x && git push --tags` (triggers PyPI publish).
 - **Publish a new extension release:** tag with `git tag ext-v0.x.x && git push --tags` (triggers VS Code Marketplace publish and uploads `.vsix` to the GitHub Release).

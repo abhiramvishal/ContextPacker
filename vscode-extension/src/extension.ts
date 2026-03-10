@@ -27,14 +27,14 @@ async function ensureCLI(panel: ContextCraftPanel, pythonPath: string): Promise<
   }
   panel.showError(
     "ContextCraft CLI not found",
-    "ContextCraft CLI not found. Install it with:\n\n  pip install contextcraft"
+    "ContextCraft CLI not found. Install it with:\n\n  pip install llm-codepac"
   );
   const copy = await vscode.window.showErrorMessage(
-    "ContextCraft CLI not found. Install it with: pip install contextcraft",
+    "ContextCraft CLI not found. Install it with: pip install llm-codepac",
     "Copy install command"
   );
   if (copy === "Copy install command") {
-    await vscode.env.clipboard.writeText("pip install contextcraft");
+    await vscode.env.clipboard.writeText("pip install llm-codepac");
   }
   return false;
 }
