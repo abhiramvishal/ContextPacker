@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContextCraft | Give your AI the context it actually needs.</title>
+    <meta name="description" content="ContextCraft analyzes your codebase and generates structured Context Packs for AI coding assistants like Claude, Cursor, and GitHub Copilot.">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <nav>
+        <div class="container nav-content">
+            <a href="#" class="logo">Context<span>Craft</span></a>
+            <div class="nav-links">
+                <a href="https://github.com/abhiramvishal/ContextPacker" target="_blank" class="btn btn-secondary">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero container">
+            <div class="hero-content animate-fade-in">
+                <h1>Give your AI the context it actually needs.</h1>
+                <p>ContextCraft analyzes your codebase and generates a structured Context Pack — so Claude, Cursor, and Copilot understand your project from day one.</p>
+                <div class="hero-ctas">
+                    <a href="#" class="btn btn-primary">Install CLI</a>
+                    <a href="https://marketplace.visualstudio.com" target="_blank" class="btn btn-secondary">Get VS Code Extension</a>
+                </div>
+            </div>
+            
+            <div class="terminal-snippet animate-fade-in" style="animation-delay: 0.2s">
+                <div class="terminal-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="terminal-title">bash</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="line"><span class="prompt">$</span> pip install contextcraft</div>
+                    <div class="line"><span class="prompt">$</span> contextcraft init</div>
+                    <div class="line success">✓ context.pack.md written to project root</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="how-it-works container" id="how-it-works">
+            <h2>How It Works</h2>
+            <div class="step-grid">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <h3>Install</h3>
+                    <p>pip install contextcraft</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <h3>Run</h3>
+                    <p>contextcraft init in your project root</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <h3>Share</h3>
+                    <p>Drop context.pack.md into any AI tool</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="features container" id="features">
+            <h2>Built for modern workflows</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>Multi-language support</h3>
+                    <p>Built-in support for Python, JS/TS, Go, and Rust projects.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">git</div>
+                    <h3>Git-aware</h3>
+                    <p>Analyzes recent commits, contributors, and branching patterns.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3>Claude-powered</h3>
+                    <p>High-quality context synthesis using advanced LLM logic.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h3>VS Code Extension</h3>
+                    <p>Native integration directly in your IDE sidebar.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Diff & Update</h3>
+                    <p>Keep your packs fresh with incremental update commands.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Zero config</h3>
+                    <p>Works out of the box with sensible developer defaults.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CLI Demo -->
+        <section class="cli-demo container">
+            <div class="demo-box">
+                <div class="terminal-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="terminal-title">contextcraft — demo</span>
+                </div>
+                <div class="terminal-body" id="demo-terminal">
+                    <div class="line"><span class="prompt">$</span> contextcraft init</div>
+                    <div class="line">Scanning 142 files...</div>
+                    <div class="line">Analyzing structure...</div>
+                    <div class="line">Synthesizing with Claude...</div>
+                    <div class="line success">✓ context.pack.md ready (2,847 tokens)</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Install Banner -->
+        <section class="install-banner container">
+            <div class="banner-tabs">
+                <div class="tab-header">
+                    <button class="tab-btn active" data-tab="cli">CLI</button>
+                    <button class="tab-btn" data-tab="vscode">VS Code</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="cli">
+                        <code>pip install contextcraft</code>
+                    </div>
+                    <div class="tab-pane" id="vscode">
+                        <p>Search "ContextCraft" in Extensions or:</p>
+                        <code>ext install contextcraft.contextcraft</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="container">
+        <div class="footer-content">
+            <div class="footer-left">
+                <a href="#" class="logo">Context<span>Craft</span></a>
+                <p>Built for developers who take context seriously.</p>
+            </div>
+            <div class="footer-right">
+                <a href="https://github.com/abhiramvishal/ContextPacker" target="_blank">GitHub</a>
+                <span>MIT License</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
