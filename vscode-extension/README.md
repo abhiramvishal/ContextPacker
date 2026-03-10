@@ -2,10 +2,10 @@
 
 Generate structured **Context Packs** for AI coding tools (Claude, Cursor, Copilot) from your codebase, directly inside VS Code.
 
-This extension runs the [ContextCraft](https://pypi.org/project/contextcraft/) Python CLI as a subprocess. You must install the CLI first:
+This extension runs the [ContextCraft](https://pypi.org/project/llm-codepac/) Python CLI as a subprocess. You must install the CLI first:
 
 ```bash
-pip install contextcraft
+pip install llm-codepac
 ```
 
 ## Commands
@@ -25,7 +25,7 @@ pip install contextcraft
 
 ## Requirements
 
-- Python 3.11+ with `contextcraft` installed (`pip install contextcraft`)
+- Python 3.11+ with `contextcraft` installed (`pip install llm-codepac`)
 - For AI synthesis: [Anthropic API key](https://console.anthropic.com/)
 
 ## License
