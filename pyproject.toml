@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "contextcraft"
@@ -50,7 +50,7 @@ dev = [
 contextcraft = "contextcraft.cli:app"
 
 [tool.setuptools.dynamic]
-version = { attr = "__version__", file = "contextcraft/__init__.py" }
+version = { attr = "contextcraft.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["."]
