@@ -66,9 +66,12 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "package": "vsce package --no-dependencies",
+    "prepackage": "npm run compile"
   },
   "devDependencies": {
+    "@vscode/vsce": "^2.24.0",
     "@types/vscode": "^1.85.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.3.0",

@@ -38,3 +38,10 @@ Create a `.env` file (see `.env.example`) or set:
 
 - Python 3.11+
 - Git (optional; used for recent commits and hotspot analysis)
+
+## Distribution
+
+- **Install from PyPI:** `pip install contextcraft`
+- **Install the VS Code extension:** [ContextCraft on the Marketplace](https://marketplace.visualstudio.com/) (when published), or install manually: download the `.vsix` from [Releases](https://github.com/abhiramvishal/ContextPacker/releases) and run *Extensions: Install from VSIX...* in VS Code.
+- **Publish a new Python release:** tag with `git tag v0.x.x && git push --tags` (triggers PyPI publish).
+- **Publish a new extension release:** tag with `git tag ext-v0.x.x && git push --tags` (triggers VS Code Marketplace publish and uploads `.vsix` to the GitHub Release).
