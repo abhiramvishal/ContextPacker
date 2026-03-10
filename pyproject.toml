@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "contextcraft"
+name = "contextpacker"
 dynamic = ["version"]
 description = "Generate structured Context Packs for AI coding tools by analyzing your codebase."
 readme = "README.md"
@@ -48,6 +48,7 @@ dev = [
 
 [project.scripts]
 contextcraft = "contextcraft.cli:app"
+contextpacker = "contextcraft.cli:app"
 
 [tool.setuptools.dynamic]
 version = { attr = "contextcraft.__version__" }
