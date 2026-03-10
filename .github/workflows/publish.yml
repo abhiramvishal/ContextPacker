@@ -88,6 +88,8 @@ jobs:
           git add contextcraft/__init__.py
           git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
           git tag "v${{ steps.bump.outputs.version }}"
+          # Pull rebase in case publish-extension.yml pushed its own bump concurrently
+          git pull --rebase origin main
           git push origin main --follow-tags
 
       - name: Install build

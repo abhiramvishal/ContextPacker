@@ -65,6 +65,8 @@ jobs:
           git add vscode-extension/package.json vscode-extension/package-lock.json
           git commit -m "chore: bump ext version to ${{ steps.bump.outputs.version }}"
           git tag "ext-v${{ steps.bump.outputs.version }}"
+          # Pull rebase in case publish.yml pushed its own bump concurrently
+          git pull --rebase origin main
           git push origin main --follow-tags
 
       - name: Package extension
