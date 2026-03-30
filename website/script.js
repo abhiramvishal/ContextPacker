@@ -27,4 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             line.style.transform = 'translateX(0)';
         }, 100);
     });
+
+    // Initialize Lucide icons
+    lucide.createIcons();
 });

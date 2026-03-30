@@ -67,6 +67,12 @@ p {
 }
 
 /* UI Components */
+.icon-sm {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+}
+
 .btn {
     display: inline-flex;
     align-items: center;
@@ -266,11 +272,31 @@ nav {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
+    transition: var(--transition);
+}
+
+.feature-card:hover {
+    border-color: var(--accent-purple);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.1);
 }
 
 .feature-icon {
-    font-size: 1.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--accent-purple);
+    border-radius: 12px;
+    border: 1px solid rgba(124, 58, 237, 0.2);
     margin-bottom: 1.5rem;
+}
+
+.feature-icon svg {
+    width: 24px;
+    height: 24px;
 }
 
 .feature-card h3 {
